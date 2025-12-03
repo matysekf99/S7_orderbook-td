@@ -3,41 +3,109 @@
 // ============================================================================
 
 use std::collections::HashMap;
-
+use itertools::Itertools;
 use crate::interfaces::{OrderBook, Price, Quantity, Side, Update};
 
-pub struct OrderBookImpl {}
+pub struct OrderBookImpl {
+    bids:HashMap<Price,Quantity>,
+    asks:HashMap<Price,Quantity>
+}
 
 impl OrderBook for OrderBookImpl {
     fn new() -> Self {
-        panic!("Todo")
+        Self { 
+            bids: HashMap::new(),
+            asks: HashMap::new()
+        }
     }
 
     fn apply_update(&mut self, update: Update) {
-        panic!("Todo")
+        match update{
+            Update::Set{ price, quantity, side } =>{
+                match side{
+                    Side::Ask=>{
+                        self.asks.insert(price, quantity);
+                    },
+                    Side::Bid=>{
+                        self.bids.insert(price, quantity);
+                    }
+                }
+            },
+            Update::Remove{ price, side }=>{
+                match side{
+                    Side::Ask=>{
+                        self.asks.remove(&price);
+                    },
+                    Side::Bid=>{
+                        self.bids.remove(&price);
+                    }
+                }
+            }
+        }
     }
 
     fn get_spread(&self) -> Option<Price> {
-        panic!("Todo")
+        let min_price_ask =  match self.asks.keys().min(){
+            Some(v)=>v,
+            None=>return None
+        };
+        let max_price_bid = match self.bids.keys().max(){
+            Some(v)=>v,
+            None=>return None
+        };
+        let spread = max_price_bid-min_price_ask;
+        Some(spread)
     }
 
     fn get_best_bid(&self) -> Option<Price> {
-        panic!("Todo")
+        let best_bid =  match self.bids.keys().min(){
+            Some(v)=>v,
+            None=>return None
+        };
+        Some(*best_bid)
     }
 
     fn get_best_ask(&self) -> Option<Price> {
-        panic!("Todo")
+        let best_ask =  match self.asks.keys().max(){
+            Some(v)=>v,
+            None=>return None
+        };
+        Some(*best_ask)
     }
 
     fn get_quantity_at(&self, price: Price, side: Side) -> Option<Quantity> {
-        panic!("Todo")
+        match side{
+            Side::Bid=>{
+                Some(self.bids[&price])
+            },
+            Side::Ask=>{
+                Some(self.bids[&price])
+            }
+        }
     }
 
     fn get_top_levels(&self, side: Side, n: usize) -> Vec<(Price, Quantity)> {
-        panic!("Todo")
+        match side{
+            Side::Bid => {
+                self.bids
+                    .iter()
+                    .sorted_by(|a, b| b.0.cmp(&a.0))
+                    .take(n)
+                    .map(|(p, q)| (*p, *q))
+                    .collect()
+            }
+            Side::Ask=>{
+                self.bids
+                    .iter()
+                    .sorted_by(|a, b| a.0.cmp(&b.0))
+                    .take(n)
+                    .map(|(p, q)| (*p, *q))
+                    .collect()
+            }
+        }
     }
 
     fn get_total_quantity(&self, side: Side) -> Quantity {
-        panic!("Todo")
+        self.bids.values().sum()
     }
 }
