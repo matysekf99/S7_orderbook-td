@@ -79,7 +79,7 @@ impl OrderBook for OrderBookImpl {
                 Some(self.bids[&price])
             },
             Side::Ask=>{
-                Some(self.bids[&price])
+                Some(self.asks[&price])
             }
         }
     }
@@ -106,6 +106,11 @@ impl OrderBook for OrderBookImpl {
     }
 
     fn get_total_quantity(&self, side: Side) -> Quantity {
-        self.bids.values().sum()
+        if side == Side::Bid{
+            self.bids.values().sum()
+        }
+        else {
+            self.asks.values().sum()
+        }
     }
 }
