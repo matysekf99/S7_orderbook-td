@@ -53,12 +53,12 @@ impl OrderBook for OrderBookImpl {
             Some(v)=>v,
             None=>return None
         };
-        let spread = max_price_bid-min_price_ask;
+        let spread = min_price_ask - max_price_bid;
         Some(spread)
     }
 
     fn get_best_bid(&self) -> Option<Price> {
-        let best_bid =  match self.bids.keys().min(){
+        let best_bid =  match self.bids.keys().max(){
             Some(v)=>v,
             None=>return None
         };
@@ -66,7 +66,7 @@ impl OrderBook for OrderBookImpl {
     }
 
     fn get_best_ask(&self) -> Option<Price> {
-        let best_ask =  match self.asks.keys().max(){
+        let best_ask =  match self.asks.keys().min(){
             Some(v)=>v,
             None=>return None
         };
@@ -95,7 +95,7 @@ impl OrderBook for OrderBookImpl {
                     .collect()
             }
             Side::Ask=>{
-                self.bids
+                self.asks
                     .iter()
                     .sorted_by(|a, b| a.0.cmp(&b.0))
                     .take(n)
