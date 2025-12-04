@@ -22,12 +22,24 @@ impl OrderBook for OrderBookImpl {
     fn apply_update(&mut self, update: Update) {
         match update{
             Update::Set{ price, quantity, side } =>{
-                match side{
-                    Side::Ask=>{
-                        self.asks.insert(price, quantity);
-                    },
-                    Side::Bid=>{
-                        self.bids.insert(price, quantity);
+                if quantity==0{
+                    match side{
+                        Side::Ask=>{
+                            self.asks.remove(&price);
+                        },
+                        Side::Bid=>{
+                            self.bids.remove(&price);
+                        }
+                    }
+                }
+                else{
+                    match side{
+                        Side::Ask=>{
+                            self.asks.insert(price, quantity);
+                        },
+                        Side::Bid=>{
+                            self.bids.insert(price, quantity);
+                        }
                     }
                 }
             },
@@ -76,10 +88,20 @@ impl OrderBook for OrderBookImpl {
     fn get_quantity_at(&self, price: Price, side: Side) -> Option<Quantity> {
         match side{
             Side::Bid=>{
-                Some(self.bids[&price])
+                if self.bids.contains_key(&price){
+                    Some(self.bids[&price])
+                }
+                else{
+                    None
+                }
             },
             Side::Ask=>{
-                Some(self.asks[&price])
+                if self.asks.contains_key(&price){
+                    Some(self.asks[&price])
+                }
+                else{
+                    None
+                }
             }
         }
     }
