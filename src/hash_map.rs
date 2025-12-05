@@ -2,19 +2,20 @@
 // REFERENCE IMPLEMENTATION (Naive, for correctness comparison)
 // ============================================================================
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
+use itertools::Itertools;
 use crate::interfaces::{OrderBook, Price, Quantity, Side, Update};
 
 pub struct OrderBookImpl {
-    bids:BTreeMap<Price,Quantity>,
-    asks:BTreeMap<Price,Quantity>
+    bids:HashMap<Price,Quantity>,
+    asks:HashMap<Price,Quantity>
 }
 
 impl OrderBook for OrderBookImpl {
     fn new() -> Self {
         Self { 
-            bids: BTreeMap::new(),
-            asks: BTreeMap::new()
+            bids: HashMap::new(),
+            asks: HashMap::new()
         }
     }
 
@@ -110,6 +111,7 @@ impl OrderBook for OrderBookImpl {
             Side::Bid => {
                 self.bids
                     .iter()
+                    .sorted_by(|a, b| b.0.cmp(&a.0))
                     .take(n)
                     .map(|(p, q)| (*p, *q))
                     .collect()
@@ -117,6 +119,7 @@ impl OrderBook for OrderBookImpl {
             Side::Ask=>{
                 self.asks
                     .iter()
+                    .sorted_by(|a, b| a.0.cmp(&b.0))
                     .take(n)
                     .map(|(p, q)| (*p, *q))
                     .collect()
