@@ -6,49 +6,70 @@ use std::collections::BTreeMap;
 use crate::interfaces::{OrderBook, Price, Quantity, Side, Update};
 
 pub struct OrderBookImpl {
-    bids:BTreeMap<Price,Quantity>,
-    asks:BTreeMap<Price,Quantity>
+    bids: BTreeMap<Price, Quantity>,
+    asks: BTreeMap<Price, Quantity>,
+    best_bid: Option<Price>,
+    best_ask: Option<Price>,
 }
 
 impl OrderBook for OrderBookImpl {
     fn new() -> Self {
         Self { 
             bids: BTreeMap::new(),
-            asks: BTreeMap::new()
+            asks: BTreeMap::new(),
+            best_bid: None,
+            best_ask: None,
         }
     }
 
     fn apply_update(&mut self, update: Update) {
-        match update{
-            Update::Set{ price, quantity, side } =>{
-                if quantity==0{
-                    match side{
-                        Side::Ask=>{
+        match update {
+            Update::Set { price, quantity, side } => {
+                if quantity == 0 {
+                    match side {
+                        Side::Ask => {
                             self.asks.remove(&price);
+                            if self.best_ask == Some(price) {
+                                self.best_ask = self.asks.first_key_value().map(|(p, _)| *p);
+                            }
                         },
-                        Side::Bid=>{
+                        Side::Bid => {
                             self.bids.remove(&price);
+                            if self.best_bid == Some(price) {
+                                self.best_bid = self.bids.last_key_value().map(|(p, _)| *p);
+                            }
                         }
                     }
-                }
-                else{
-                    match side{
-                        Side::Ask=>{
+                } else {
+                    match side {
+                        Side::Ask => {
                             self.asks.insert(price, quantity);
+                            if self.best_ask.is_none() || price < self.best_ask.unwrap() {
+                                self.best_ask = Some(price);
+                            }
                         },
-                        Side::Bid=>{
+                        Side::Bid => {
                             self.bids.insert(price, quantity);
+                            if self.best_bid.is_none() || price > self.best_bid.unwrap() {
+                                self.best_bid = Some(price);
+                            }
                         }
                     }
                 }
             },
-            Update::Remove{ price, side }=>{
-                match side{
-                    Side::Ask=>{
+            Update::Remove { price, side } => {
+                match side {
+                    Side::Ask => {
                         self.asks.remove(&price);
+                        if self.best_ask == Some(price) {
+                            self.best_ask = self.asks.first_key_value().map(|(p, _)| *p);
+                        }
                     },
-                    Side::Bid=>{
+                    Side::Bid => {
                         self.bids.remove(&price);
+                        if self.best_bid == Some(price) {
+                            self.best_bid = self.bids.last_key_value().map(|(p, _)| *p);
+                        }
                     }
                 }
             }
@@ -56,65 +77,35 @@ impl OrderBook for OrderBookImpl {
     }
 
     fn get_spread(&self) -> Option<Price> {
-        let min_price_ask =  match self.asks.keys().min(){
-            Some(v)=>v,
-            None=>return None
-        };
-        let max_price_bid = match self.bids.keys().max(){
-            Some(v)=>v,
-            None=>return None
-        };
-        let spread = min_price_ask - max_price_bid;
-        Some(spread)
+        Some(self.best_ask? - self.best_bid?)
     }
 
     fn get_best_bid(&self) -> Option<Price> {
-        let best_bid =  match self.bids.keys().max(){
-            Some(v)=>v,
-            None=>return None
-        };
-        Some(*best_bid)
+        self.best_bid
     }
 
     fn get_best_ask(&self) -> Option<Price> {
-        let best_ask =  match self.asks.keys().min(){
-            Some(v)=>v,
-            None=>return None
-        };
-        Some(*best_ask)
+        self.best_ask
     }
 
     fn get_quantity_at(&self, price: Price, side: Side) -> Option<Quantity> {
-        match side{
-            Side::Bid=>{
-                if self.bids.contains_key(&price){
-                    Some(self.bids[&price])
-                }
-                else{
-                    None
-                }
-            },
-            Side::Ask=>{
-                if self.asks.contains_key(&price){
-                    Some(self.asks[&price])
-                }
-                else{
-                    None
-                }
-            }
+        match side {
+            Side::Bid => self.bids.get(&price).copied(),
+            Side::Ask => self.asks.get(&price).copied(),
         }
     }
 
     fn get_top_levels(&self, side: Side, n: usize) -> Vec<(Price, Quantity)> {
-        match side{
+        match side {
             Side::Bid => {
                 self.bids
                     .iter()
+                    .rev()  
                     .take(n)
                     .map(|(p, q)| (*p, *q))
                     .collect()
             }
-            Side::Ask=>{
+            Side::Ask => {
                 self.asks
                     .iter()
                     .take(n)
@@ -125,10 +116,9 @@ impl OrderBook for OrderBookImpl {
     }
 
     fn get_total_quantity(&self, side: Side) -> Quantity {
-        if side == Side::Bid{
+        if side == Side::Bid {
             self.bids.values().sum()
-        }
-        else {
+        } else {
             self.asks.values().sum()
         }
     }
